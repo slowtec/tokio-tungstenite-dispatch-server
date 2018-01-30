@@ -17,7 +17,7 @@ pub fn main() {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
 
-    let (channels, server) = serve(&handle, &addr).unwrap();
+    let (channels, server) = serve(&addr, &handle).unwrap();
 
     let (mut tx, rx) = channels;
 

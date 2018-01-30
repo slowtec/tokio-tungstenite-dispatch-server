@@ -38,7 +38,7 @@ type ServerFuture = Box<Future<Item = (), Error = ()>>;
 type Out = mpsc::UnboundedSender<ServerEvent>;
 type In = mpsc::UnboundedReceiver<ClientEvent>;
 
-pub fn serve(handle: &Handle, addr: &SocketAddr) -> Result<((Out, In), ServerFuture)> {
+pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFuture)> {
     let socket = TcpListener::bind(&addr, &handle)?;
     let handle = handle.clone();
     let connections = Rc::new(RefCell::new(HashMap::new()));
