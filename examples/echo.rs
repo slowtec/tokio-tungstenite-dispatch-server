@@ -6,7 +6,7 @@ extern crate tokio_core;
 extern crate tokio_tungstenite_dispatch_server;
 
 use tokio_core::reactor::Core;
-use tokio_tungstenite_dispatch_server::serve;
+use tokio_tungstenite_dispatch_server::{serve, ClientEvent};
 use futures::stream::Stream;
 use futures::Sink;
 use futures::Future;
@@ -21,9 +21,19 @@ pub fn main() {
 
     let (mut tx, rx) = channels;
 
-    let receiver = rx.for_each(|(msg, addr)| {
-        info!("received message {} from {}", msg, addr);
-        tx.start_send((msg, addr)).unwrap();
+    let receiver = rx.for_each(|ev| {
+        match ev {
+            ClientEvent::Connected(addr) => {
+                info!("{} connected", addr);
+            }
+            ClientEvent::Disconnected(addr) => {
+                info!("{} disconnected", addr);
+            }
+            ClientEvent::Message(addr, msg) => {
+                info!("received message {} from {}", msg, addr);
+                tx.start_send((msg, addr)).unwrap();
+            }
+        }
         Ok(())
     });
 

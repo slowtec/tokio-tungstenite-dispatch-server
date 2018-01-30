@@ -23,7 +23,14 @@ pub use tungstenite::protocol::Message;
 
 type ServerFuture = Box<Future<Item = (), Error = ()>>;
 type Out = mpsc::UnboundedSender<(Message, SocketAddr)>;
-type In = mpsc::UnboundedReceiver<(Message, SocketAddr)>;
+type In = mpsc::UnboundedReceiver<ClientEvent>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ClientEvent {
+    Connected(SocketAddr),
+    Disconnected(SocketAddr),
+    Message(SocketAddr, Message),
+}
 
 pub fn serve(handle: &Handle, addr: &SocketAddr) -> Result<((Out, In), ServerFuture)> {
     let socket = TcpListener::bind(&addr, &handle)?;
@@ -44,13 +51,18 @@ pub fn serve(handle: &Handle, addr: &SocketAddr) -> Result<((Out, In), ServerFut
             .and_then(move |ws_stream| {
                 debug!("New websocket client connected: {}", addr);
 
+                if let Err(err) = in_msg_tx.start_send(ClientEvent::Connected(addr)) {
+                    warn!("Could not send connection event for {}: {}", addr, err);
+                }
+
                 let (tx, rx) = mpsc::unbounded();
                 connections_inner.borrow_mut().insert(addr, tx);
 
                 let (sink, stream) = ws_stream.split();
 
+                let mut in_tx = in_msg_tx.clone();
                 let ws_reader = stream.for_each(move |msg| {
-                    if let Err(err) = in_msg_tx.start_send((msg, addr)) {
+                    if let Err(err) = in_tx.start_send(ClientEvent::Message(addr, msg)) {
                         error!("Could not receive message from {}: {}", addr, err);
                     }
                     Ok(())
@@ -68,6 +80,9 @@ pub fn serve(handle: &Handle, addr: &SocketAddr) -> Result<((Out, In), ServerFut
                 handle_inner.spawn(connection.then(move |_| {
                     connections_inner.borrow_mut().remove(&addr);
                     debug!("Connection {} closed.", addr);
+                    if let Err(err) = in_msg_tx.start_send(ClientEvent::Disconnected(addr)) {
+                        warn!("Could not send disconnection event for {}: {}", addr, err);
+                    }
                     Ok(())
                 }));
                 Ok(())
