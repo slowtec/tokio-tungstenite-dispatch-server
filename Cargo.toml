@@ -1,0 +1,11 @@
+[package]
+name = "tokio-tungstenite-dispatch-server"
+version = "0.0.0"
+authors = ["Markus Kohlhase <markus.kohlhase@slowtec.de>"]
+
+[dependencies]
+log = "0.4"
+futures = "0.1"
+tokio-core = "0.1"
+tungstenite = { version = "0.5", default-features=false }
+tokio-tungstenite = { version = "0.5", default-features=false, features = ["connect"] }
