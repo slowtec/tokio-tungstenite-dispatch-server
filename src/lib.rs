@@ -13,7 +13,7 @@ use std::io::{Error, ErrorKind, Result};
 
 use futures::stream::Stream;
 use futures::{Future, Sink};
-use futures::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use futures::sync::mpsc;
 
 use tokio_core::reactor::Handle;
 use tokio_core::net::TcpListener;
@@ -21,15 +21,17 @@ use tokio_core::net::TcpListener;
 use tokio_tungstenite::accept_async;
 pub use tungstenite::protocol::Message;
 
-pub fn serve(
-    handle: &Handle,
-    addr: &SocketAddr,
-    in_msg_tx: UnboundedSender<(Message, SocketAddr)>,
-    out_msg_rx: UnboundedReceiver<(Message, SocketAddr)>,
-) -> Result<Box<Future<Item = (), Error = ()>>> {
+type ServerFuture = Box<Future<Item = (), Error = ()>>;
+type Out = mpsc::UnboundedSender<(Message, SocketAddr)>;
+type In = mpsc::UnboundedReceiver<(Message, SocketAddr)>;
+
+pub fn serve(handle: &Handle, addr: &SocketAddr) -> Result<((Out, In), ServerFuture)> {
     let socket = TcpListener::bind(&addr, &handle)?;
     let handle = handle.clone();
     let connections = Rc::new(RefCell::new(HashMap::new()));
+
+    let (in_msg_tx, in_msg_rx) = mpsc::unbounded();
+    let (out_msg_tx, out_msg_rx) = mpsc::unbounded();
 
     let connections_inner = connections.clone();
 
@@ -42,12 +44,12 @@ pub fn serve(
             .and_then(move |ws_stream| {
                 debug!("New websocket client connected: {}", addr);
 
-                let (tx, rx) = futures::sync::mpsc::unbounded::<Message>();
+                let (tx, rx) = mpsc::unbounded();
                 connections_inner.borrow_mut().insert(addr, tx);
 
                 let (sink, stream) = ws_stream.split();
 
-                let ws_reader = stream.for_each(move |msg: Message| {
+                let ws_reader = stream.for_each(move |msg| {
                     if let Err(err) = in_msg_tx.start_send((msg, addr)) {
                         error!("Could not receive message from {}: {}", addr, err);
                     }
@@ -90,5 +92,5 @@ pub fn serve(
         .map(|_| ())
         .map_err(|_| ());
 
-    Ok(Box::new(server))
+    Ok(((out_msg_tx, in_msg_rx), Box::new(server)))
 }

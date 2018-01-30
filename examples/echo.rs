@@ -3,8 +3,7 @@ extern crate tokio_core;
 extern crate tokio_tungstenite_dispatch_server;
 
 use tokio_core::reactor::Core;
-use tokio_tungstenite_dispatch_server::{serve, Message};
-use std::net::SocketAddr;
+use tokio_tungstenite_dispatch_server::serve;
 use futures::stream::Stream;
 use futures::Sink;
 use futures::Future;
@@ -14,14 +13,13 @@ pub fn main() {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
 
-    let (client_tx, client_rx) = futures::sync::mpsc::unbounded::<(Message, SocketAddr)>();
-    let (mut server_tx, server_rx) = futures::sync::mpsc::unbounded::<(Message, SocketAddr)>();
+    let (channels, server) = serve(&handle, &addr).unwrap();
 
-    let server = serve(&handle, &addr, client_tx, server_rx).unwrap();
+    let (mut tx, rx) = channels;
 
-    let receiver = client_rx.for_each(|(msg, addr)| {
+    let receiver = rx.for_each(|(msg, addr)| {
         println!("received message {} from {}", msg, addr);
-        server_tx.start_send((msg, addr)).unwrap();
+        tx.start_send((msg, addr)).unwrap();
         Ok(())
     });
 
