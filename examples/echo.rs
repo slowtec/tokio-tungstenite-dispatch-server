@@ -1,4 +1,7 @@
+extern crate env_logger;
 extern crate futures;
+#[macro_use]
+extern crate log;
 extern crate tokio_core;
 extern crate tokio_tungstenite_dispatch_server;
 
@@ -9,6 +12,7 @@ use futures::Sink;
 use futures::Future;
 
 pub fn main() {
+    env_logger::init();
     let addr = "127.0.0.1:8080".parse().unwrap();
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -18,7 +22,7 @@ pub fn main() {
     let (mut tx, rx) = channels;
 
     let receiver = rx.for_each(|(msg, addr)| {
-        println!("received message {} from {}", msg, addr);
+        info!("received message {} from {}", msg, addr);
         tx.start_send((msg, addr)).unwrap();
         Ok(())
     });
