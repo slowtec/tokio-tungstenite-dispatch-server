@@ -6,7 +6,7 @@ extern crate tokio_core;
 extern crate tokio_tungstenite_dispatch_server;
 
 use tokio_core::reactor::Core;
-use tokio_tungstenite_dispatch_server::{serve, ClientEvent};
+use tokio_tungstenite_dispatch_server::*;
 use futures::stream::Stream;
 use futures::Sink;
 use futures::Future;
@@ -31,7 +31,7 @@ pub fn main() {
             }
             ClientEvent::Message(addr, msg) => {
                 info!("received message {} from {}", msg, addr);
-                tx.start_send((msg, addr)).unwrap();
+                tx.start_send(ServerEvent::Broadcast(msg)).unwrap();
             }
         }
         Ok(())

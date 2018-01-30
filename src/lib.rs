@@ -21,16 +21,22 @@ use tokio_core::net::TcpListener;
 use tokio_tungstenite::accept_async;
 pub use tungstenite::protocol::Message;
 
-type ServerFuture = Box<Future<Item = (), Error = ()>>;
-type Out = mpsc::UnboundedSender<(Message, SocketAddr)>;
-type In = mpsc::UnboundedReceiver<ClientEvent>;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClientEvent {
     Connected(SocketAddr),
     Disconnected(SocketAddr),
     Message(SocketAddr, Message),
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ServerEvent {
+    Message(SocketAddr, Message),
+    Broadcast(Message),
+}
+
+type ServerFuture = Box<Future<Item = (), Error = ()>>;
+type Out = mpsc::UnboundedSender<ServerEvent>;
+type In = mpsc::UnboundedReceiver<ClientEvent>;
 
 pub fn serve(handle: &Handle, addr: &SocketAddr) -> Result<((Out, In), ServerFuture)> {
     let socket = TcpListener::bind(&addr, &handle)?;
@@ -93,10 +99,19 @@ pub fn serve(handle: &Handle, addr: &SocketAddr) -> Result<((Out, In), ServerFut
             })
     });
 
-    let dispatcher = out_msg_rx.for_each(move |(msg, addr)| {
-        if let Some(mut tx) = connections.borrow().get(&addr) {
-            if let Err(err) = tx.start_send(msg) {
-                error!("Could not send message to {}: {}", addr, err);
+    let dispatcher = out_msg_rx.for_each(move |ev| {
+        match ev {
+            ServerEvent::Broadcast(msg) => for (addr, mut tx) in connections.borrow().iter() {
+                if let Err(err) = tx.start_send(msg.clone()) {
+                    error!("Could not send message to {}: {}", addr, err);
+                }
+            },
+            ServerEvent::Message(addr, msg) => {
+                if let Some(mut tx) = connections.borrow().get(&addr) {
+                    if let Err(err) = tx.start_send(msg) {
+                        error!("Could not send message to {}: {}", addr, err);
+                    }
+                }
             }
         }
         Ok(())
