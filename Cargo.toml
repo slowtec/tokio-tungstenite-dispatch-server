@@ -2,6 +2,10 @@
 name = "tokio-tungstenite-dispatch-server"
 version = "0.0.0"
 authors = ["Markus Kohlhase <markus.kohlhase@slowtec.de>"]
+license = "MIT/Apache-2.0"
+keywords = ["websockets","server"]
+homepage = "https://github.com/slowtec/tokio-tungstenite-dispatch-server"
+repository = "https://github.com/slowtec/tokio-tungstenite-dispatch-server"
 
 [dependencies]
 log = "0.4"
