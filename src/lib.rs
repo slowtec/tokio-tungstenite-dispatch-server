@@ -51,13 +51,13 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
     let srv = socket.incoming().for_each(move |(stream, addr)| {
         let connections_inner = connections_inner.clone();
         let handle_inner = handle.clone();
-        let mut in_msg_tx = in_msg_tx.clone();
+        let in_msg_tx = in_msg_tx.clone();
 
         accept_async(stream)
             .and_then(move |ws_stream| {
                 debug!("New websocket client connected: {}", addr);
 
-                if let Err(err) = in_msg_tx.start_send(ClientEvent::Connected(addr)) {
+                if let Err(err) = in_msg_tx.unbounded_send(ClientEvent::Connected(addr)) {
                     warn!("Could not send connection event for {}: {}", addr, err);
                 }
 
@@ -66,9 +66,9 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
 
                 let (sink, stream) = ws_stream.split();
 
-                let mut in_tx = in_msg_tx.clone();
+                let in_tx = in_msg_tx.clone();
                 let ws_reader = stream.for_each(move |msg| {
-                    if let Err(err) = in_tx.start_send(ClientEvent::Message(addr, msg)) {
+                    if let Err(err) = in_tx.unbounded_send(ClientEvent::Message(addr, msg)) {
                         error!("Could not receive message from {}: {}", addr, err);
                     }
                     Ok(())
@@ -76,6 +76,9 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
 
                 let ws_writer = rx.fold(sink, move |mut sink, msg| {
                     if let Err(err) = sink.start_send(msg) {
+                        error!("Could not send message to {}: {}", addr, err);
+                    }
+                    if let Err(err) = sink.poll_complete() {
                         error!("Could not send message to {}: {}", addr, err);
                     }
                     Ok(sink)
@@ -86,7 +89,7 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
                 handle_inner.spawn(connection.then(move |_| {
                     connections_inner.borrow_mut().remove(&addr);
                     debug!("Connection {} closed.", addr);
-                    if let Err(err) = in_msg_tx.start_send(ClientEvent::Disconnected(addr)) {
+                    if let Err(err) = in_msg_tx.unbounded_send(ClientEvent::Disconnected(addr)) {
                         warn!("Could not send disconnection event for {}: {}", addr, err);
                     }
                     Ok(())
@@ -102,13 +105,13 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
     let dispatcher = out_msg_rx.for_each(move |ev| {
         match ev {
             ServerEvent::Broadcast(msg) => for (addr, mut tx) in connections.borrow().iter() {
-                if let Err(err) = tx.start_send(msg.clone()) {
+                if let Err(err) = tx.unbounded_send(msg.clone()) {
                     error!("Could not send message to {}: {}", addr, err);
                 }
             },
             ServerEvent::Message(addr, msg) => {
                 if let Some(mut tx) = connections.borrow().get(&addr) {
-                    if let Err(err) = tx.start_send(msg) {
+                    if let Err(err) = tx.unbounded_send(msg) {
                         error!("Could not send message to {}: {}", addr, err);
                     }
                 }
