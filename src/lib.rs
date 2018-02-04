@@ -74,14 +74,9 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
                     Ok(())
                 });
 
-                let ws_writer = rx.fold(sink, move |mut sink, msg| {
-                    if let Err(err) = sink.start_send(msg) {
-                        error!("Could not send message to {}: {}", addr, err);
-                    }
-                    if let Err(err) = sink.poll_complete() {
-                        error!("Could not send message to {}: {}", addr, err);
-                    }
-                    Ok(sink)
+                let ws_writer = rx.fold(sink, move |sink, msg| {
+                    sink.send(msg)
+                        .map_err(move |err| error!("Could not send message to {}: {}", addr, err))
                 });
 
                 let connection = ws_reader.map_err(|_| ()).select(ws_writer.map(|_| ()));
