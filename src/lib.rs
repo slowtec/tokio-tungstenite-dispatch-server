@@ -58,7 +58,7 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
                 debug!("New websocket client connected: {}", addr);
 
                 if let Err(err) = in_msg_tx.unbounded_send(ClientEvent::Connected(addr)) {
-                    warn!("Could not send connection event for {}: {}", addr, err);
+                    error!("Could not send connection event for {}: {}", addr, err);
                 }
 
                 let (tx, rx) = mpsc::unbounded();
@@ -85,14 +85,14 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
                     connections_inner.borrow_mut().remove(&addr);
                     debug!("Connection {} closed.", addr);
                     if let Err(err) = in_msg_tx.unbounded_send(ClientEvent::Disconnected(addr)) {
-                        warn!("Could not send disconnection event for {}: {}", addr, err);
+                        error!("Could not send disconnection event for {}: {}", addr, err);
                     }
                     Ok(())
                 }));
                 Ok(())
             })
             .map_err(|e| {
-                warn!("Error during the websocket handshake occurred: {}", e);
+                error!("Error during the websocket handshake occurred: {}", e);
                 Error::new(ErrorKind::Other, e)
             })
     });
@@ -115,7 +115,7 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
         Ok(())
     });
 
-    let server = srv.map_err(|_| ())
+    let server = srv.map_err(|e| error!("{}", e))
         .select(dispatcher)
         .map(|_| ())
         .map_err(|_| ());
