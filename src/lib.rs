@@ -19,6 +19,7 @@ use tokio_core::reactor::Handle;
 use tokio_core::net::TcpListener;
 
 use tokio_tungstenite::accept_async;
+use tungstenite::Error as WsError;
 pub use tungstenite::protocol::Message;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,14 +53,18 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
         let connections_inner = connections_inner.clone();
         let handle_inner = handle.clone();
         let in_msg_tx = in_msg_tx.clone();
-
         accept_async(stream)
             .and_then(move |ws_stream| {
                 debug!("New websocket client connected: {}", addr);
 
-                if let Err(err) = in_msg_tx.unbounded_send(ClientEvent::Connected(addr)) {
-                    error!("Could not send connection event for {}: {}", addr, err);
-                }
+                in_msg_tx
+                    .unbounded_send(ClientEvent::Connected(addr))
+                    .map_err(|err| {
+                        WsError::Io(Error::new(
+                            ErrorKind::Other,
+                            format!("Could not send connection event for {}: {}", addr, err),
+                        ))
+                    })?;
 
                 let (tx, rx) = mpsc::unbounded();
                 connections_inner.borrow_mut().insert(addr, tx);
@@ -67,33 +72,41 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
                 let (sink, stream) = ws_stream.split();
 
                 let in_tx = in_msg_tx.clone();
+
                 let ws_reader = stream.for_each(move |msg| {
-                    if let Err(err) = in_tx.unbounded_send(ClientEvent::Message(addr, msg)) {
-                        error!("Could not receive message from {}: {}", addr, err);
-                    }
-                    Ok(())
+                    in_tx
+                        .unbounded_send(ClientEvent::Message(addr, msg))
+                        .map_err(|err| {
+                            WsError::Io(Error::new(
+                                ErrorKind::Other,
+                                format!("Could not receive message from {}: {}", addr, err),
+                            ))
+                        })
                 });
 
-                let ws_writer = rx.fold(sink, move |sink, msg| {
-                    sink.send(msg)
-                        .map_err(move |err| error!("Could not send message to {}: {}", addr, err))
-                });
+                let ws_writer = rx.map_err(|_| {
+                    WsError::Io(Error::new(
+                        ErrorKind::Other,
+                        "Could not receive server event",
+                    ))
+                }).fold(sink, move |sink, msg| sink.send(msg));
 
-                let connection = ws_reader.map_err(|_| ()).select(ws_writer.map(|_| ()));
+                let connection = ws_reader.select(ws_writer.map(|_| ()));
 
                 handle_inner.spawn(connection.then(move |_| {
                     connections_inner.borrow_mut().remove(&addr);
                     debug!("Connection {} closed.", addr);
-                    if let Err(err) = in_msg_tx.unbounded_send(ClientEvent::Disconnected(addr)) {
-                        error!("Could not send disconnection event for {}: {}", addr, err);
-                    }
-                    Ok(())
+                    in_msg_tx
+                        .unbounded_send(ClientEvent::Disconnected(addr))
+                        .map_err(|err| {
+                            error!("Could not send disconnection event for {}: {}", addr, err)
+                        })
                 }));
                 Ok(())
             })
-            .map_err(|e| {
-                error!("Error during the websocket handshake occurred: {}", e);
-                Error::new(ErrorKind::Other, e)
+            .or_else(move |err| {
+                error!("Error during the websocket handshake occurred: {}", err);
+                Ok(()) // don't stop TCP server
             })
     });
 
