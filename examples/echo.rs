@@ -3,13 +3,13 @@ extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate tokio_core;
-extern crate tokio_tungstenite_dispatch_server;
+extern crate tungstenite_dispatch_server;
 
-use tokio_core::reactor::Core;
-use tokio_tungstenite_dispatch_server::*;
 use futures::stream::Stream;
-use futures::Sink;
 use futures::Future;
+use futures::Sink;
+use tokio_core::reactor::Core;
+use tungstenite_dispatch_server::*;
 
 pub fn main() {
     env_logger::init();
