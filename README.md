@@ -1,10 +1,10 @@
-# tokio-tungstenite-dispatch-server
+# tungstenite-dispatch-server
 
 A simple websocket message dispatcher based on
 [tokio](https://tokio.rs) and
 [tungstenite](https://docs.rs/tungstenite/).
 
-[![Build Status](https://travis-ci.org/slowtec/tokio-tungstenite-dispatch-server.svg?branch=master)](https://travis-ci.org/slowtec/tokio-tungstenite-dispatch-server)
+[![Build Status](https://travis-ci.org/slowtec/tungstenite-dispatch-server.svg?branch=master)](https://travis-ci.org/slowtec/tungstenite-dispatch-server)
 
 ## Example
 

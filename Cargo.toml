@@ -1,11 +1,11 @@
 [package]
-name = "tokio-tungstenite-dispatch-server"
+name = "tungstenite-dispatch-server"
 version = "0.0.0"
 authors = ["Markus Kohlhase <markus.kohlhase@slowtec.de>"]
 license = "MIT/Apache-2.0"
 keywords = ["websockets","server"]
-homepage = "https://github.com/slowtec/tokio-tungstenite-dispatch-server"
-repository = "https://github.com/slowtec/tokio-tungstenite-dispatch-server"
+homepage = "https://github.com/slowtec/tungstenite-dispatch-server"
+repository = "https://github.com/slowtec/tungstenite-dispatch-server"
 readme = "README.md"
 
 [dependencies]
@@ -19,4 +19,4 @@ tokio-tungstenite = { version = "0.5", default-features=false, features = ["conn
 env_logger = "0.5"
 
 [badges]
-travis-ci = { repository = "slowtec/tokio-tungstenite-dispatch-server" }
+travis-ci = { repository = "slowtec/tungstenite-dispatch-server" }
