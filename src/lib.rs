@@ -5,22 +5,22 @@ extern crate tokio_core;
 extern crate tokio_tungstenite;
 extern crate tungstenite;
 
-use std::net::SocketAddr;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::io::{Error, ErrorKind, Result};
+use std::net::SocketAddr;
+use std::rc::Rc;
 
 use futures::stream::Stream;
-use futures::{Future, Sink};
 use futures::sync::mpsc;
+use futures::{Future, Sink};
 
-use tokio_core::reactor::Handle;
 use tokio_core::net::TcpListener;
+use tokio_core::reactor::Handle;
 
 use tokio_tungstenite::accept_async;
-use tungstenite::Error as WsError;
 pub use tungstenite::protocol::Message;
+use tungstenite::Error as WsError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClientEvent {
@@ -35,11 +35,13 @@ pub enum ServerEvent {
     Broadcast(Message),
 }
 
-type ServerFuture = Box<Future<Item = (), Error = ()>>;
 type Out = mpsc::UnboundedSender<ServerEvent>;
 type In = mpsc::UnboundedReceiver<ClientEvent>;
 
-pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFuture)> {
+pub fn serve(
+    addr: &SocketAddr,
+    handle: &Handle,
+) -> Result<((Out, In), impl Future<Item = (), Error = ()>)> {
     let socket = TcpListener::bind(&addr, &handle)?;
     let handle = handle.clone();
     let connections = Rc::new(RefCell::new(HashMap::new()));
@@ -133,5 +135,5 @@ pub fn serve(addr: &SocketAddr, handle: &Handle) -> Result<((Out, In), ServerFut
         .map(|_| ())
         .map_err(|_| ());
 
-    Ok(((out_msg_tx, in_msg_rx), Box::new(server)))
+    Ok(((out_msg_tx, in_msg_rx), server))
 }
