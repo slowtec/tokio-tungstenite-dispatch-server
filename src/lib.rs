@@ -5,19 +5,11 @@ extern crate tokio_core;
 extern crate tokio_tungstenite;
 extern crate tungstenite;
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::io::{Error, ErrorKind, Result};
-use std::net::SocketAddr;
-use std::rc::Rc;
-
-use futures::stream::Stream;
-use futures::sync::mpsc;
-use futures::{Future, Sink};
-
-use tokio_core::net::TcpListener;
-use tokio_core::reactor::Handle;
-
+use futures::{stream::Stream, sync::mpsc, Future, Sink};
+use std::{
+    cell::RefCell, collections::HashMap, io::{Error, ErrorKind, Result}, net::SocketAddr, rc::Rc,
+};
+use tokio_core::{net::TcpListener, reactor::Handle};
 use tokio_tungstenite::accept_async;
 pub use tungstenite::protocol::Message;
 use tungstenite::Error as WsError;
