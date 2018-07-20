@@ -12,14 +12,14 @@ readme = "README.md"
 log = "0.4"
 futures = "0.1"
 tokio-core = "0.1"
-tungstenite = { version = "0.5", default-features=false }
+tungstenite = { version = "0.6", default-features=false }
 
 [dependencies.tokio-tungstenite]
 version = "0.5"
 default-features=false
 features = ["connect"]
-git = "https://github.com/slowtec/tokio-tungstenite"
-branch = "fix-42"
+git = "https://github.com/snapview/tokio-tungstenite"
+rev = "d43c61428eba1ce3a56a1fb22d83b1f06147b03a"
 
 [dev-dependencies]
 env_logger = "0.5"
