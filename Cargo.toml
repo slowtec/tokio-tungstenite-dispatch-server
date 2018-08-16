@@ -15,11 +15,11 @@ tokio-core = "0.1"
 tungstenite = { version = "0.6", default-features=false }
 
 [dependencies.tokio-tungstenite]
-version = "0.5"
+version = "0.6"
 default-features=false
 features = ["connect"]
 git = "https://github.com/snapview/tokio-tungstenite"
-rev = "d43c61428eba1ce3a56a1fb22d83b1f06147b03a"
+rev = "9f3b559555e474a44b705deae46612b55c705a80"
 
 [dev-dependencies]
 env_logger = "0.5"
