@@ -18,8 +18,6 @@ tungstenite = { version = "0.6", default-features=false }
 version = "0.6"
 default-features=false
 features = ["connect"]
-git = "https://github.com/snapview/tokio-tungstenite"
-rev = "9f3b559555e474a44b705deae46612b55c705a80"
 
 [dev-dependencies]
 env_logger = "0.5"
